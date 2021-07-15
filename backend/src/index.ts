@@ -21,6 +21,11 @@ app.get("/", (req, res) => {
 app.post("/run", async (req, res) => {
 	console.log("begin");
 	try {
+		// get user info
+		const user = req.body.user;
+		const imageName = user + "-image";
+		const containerName = user + "-container";
+
 		// get script from req and save to file
 		const script = req.body.script;
 		fs.writeFile("./langs/python/app.py", script, function (err) {
@@ -32,7 +37,7 @@ app.post("/run", async (req, res) => {
 
 		// promise stream while docker builds image
 		const stream = await docker.buildImage(pack, {
-			t: "pythonapp",
+			t: imageName,
 		});
 
 		// promise stream resolve
@@ -43,8 +48,8 @@ app.post("/run", async (req, res) => {
 		});
 
 		// run container
-		await docker.run("pythonapp", [], process.stdout, {
-			name: "pythonapp",
+		await docker.run(imageName, [], process.stdout, {
+			name: containerName,
 			AttachStdin: true,
 			AttachStdout: true,
 			AttachStderr: true,
@@ -54,7 +59,7 @@ app.post("/run", async (req, res) => {
 		});
 
 		// clean up after app concludes
-		const container = docker.getContainer("pythonapp");
+		const container = docker.getContainer(containerName);
 		await container.wait();
 		await container.remove();
 
