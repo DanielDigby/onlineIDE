@@ -1,9 +1,12 @@
-import express from "express";
 import Docker from "dockerode";
 import tar from "tar-fs";
 import fs from "fs";
 import path from "path";
-const app = express();
+
+import express = require("express");
+import expressWs = require("express-ws");
+const { app } = expressWs(express());
+
 const port = process.env.PORT || 8080;
 
 // Used to parse JSON bodies, size limited
@@ -33,50 +36,60 @@ app.get("/", (req, res) => {
 	res.status(200).send("listening!");
 });
 
-app.post("/run", async (req, res) => {
-	console.log("begin " + req.body.language);
-	try {
-		// get user info
-		const user = req.body.user;
-		const imageName = user + "-image";
-		const containerName = user + "-container";
+app.ws("/socket/", function socket(ws, req) {
+	// initialize container
+	ws.on("open", function open() {
+		ws.send("open");
+	});
 
-		// pack for docker API build call
-		const pack = buildPack(req.body.language, req.body.script);
+	ws.on("message", async function incoming(msgRaw: string) {
+		const msg = JSON.parse(msgRaw.toString());
 
-		// promise stream while docker builds image
-		const stream = await docker.buildImage(pack, {
-			t: imageName,
-		});
+		// container start
+		if (msg.run === true) {
+			console.log("begin " + msg.language);
+			try {
+				// get user info
+				const user = msg.user;
+				const imageName = user + "-image";
+				const containerName = user + "-container";
 
-		// promise stream resolve
-		await new Promise((resolve, reject) => {
-			docker.modem.followProgress(stream, (err: unknown, res: unknown) =>
-				err ? reject(err) : resolve(res)
-			);
-		});
+				// pack for docker API build call
+				const pack = buildPack(msg.language, msg.script);
 
-		// run container
-		await docker.run(imageName, [], process.stdout, {
-			name: containerName,
-			AttachStdin: true,
-			AttachStdout: true,
-			AttachStderr: true,
-			Tty: true,
-			OpenStdin: true,
-			StdinOnce: false,
-		});
+				// promise stream while docker builds image
+				const stream = await docker.buildImage(pack, {
+					t: imageName,
+				});
 
-		// clean up after app concludes
-		const container = docker.getContainer(containerName);
-		await container.wait();
-		await container.remove();
+				// promise stream resolve
+				await new Promise((resolve, reject) => {
+					docker.modem.followProgress(
+						stream,
+						(err: unknown, res: unknown) =>
+							err ? reject(err) : resolve(res)
+					);
+				});
 
-		res.status(200).send();
-	} catch (err) {
-		console.log(err);
-		res.status(500).send(err);
-	}
+				// run container
+				await docker.run(imageName, [], process.stdout, {
+					name: containerName,
+					AttachStdin: true,
+					AttachStdout: true,
+					AttachStderr: true,
+					Tty: true,
+					OpenStdin: true,
+					StdinOnce: false,
+					HostConfig: { AutoRemove: true },
+				});
+
+				ws.send("container finished");
+			} catch (err) {
+				console.log(err);
+				ws.send(err);
+			}
+		}
+	});
 });
 
 app.listen(port, () => console.log(`Running on port ${port}`));
