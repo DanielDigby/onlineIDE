@@ -14,26 +14,35 @@ app.use(express.json({ limit: "300kb" }));
 // linux: { socketPath: "/var/run/docker.sock" }
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 
+// write and pack file into tar for docker API engine
+function buildPack(language: string, script: string) {
+	switch (language) {
+		case "python":
+			fs.writeFile("./langs/python/app.py", script, function (err) {
+				if (err) throw err;
+			});
+
+			return tar.pack(path.join(__dirname, "../langs/python"));
+			break;
+		default:
+			throw new Error("Unsupported Language");
+	}
+}
+
 app.get("/", (req, res) => {
 	res.status(200).send("listening!");
 });
 
 app.post("/run", async (req, res) => {
-	console.log("begin");
+	console.log("begin " + req.body.language);
 	try {
 		// get user info
 		const user = req.body.user;
 		const imageName = user + "-image";
 		const containerName = user + "-container";
 
-		// get script from req and save to file
-		const script = req.body.script;
-		fs.writeFile("./langs/python/app.py", script, function (err) {
-			if (err) throw err;
-		});
-
-		// pack into tar for docker API engine
-		const pack = tar.pack(path.join(__dirname, "../langs/python"));
+		// pack for docker API build call
+		const pack = buildPack(req.body.language, req.body.script);
 
 		// promise stream while docker builds image
 		const stream = await docker.buildImage(pack, {
