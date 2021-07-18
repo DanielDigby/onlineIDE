@@ -5,6 +5,7 @@ import path from "path";
 
 import express = require("express");
 import expressWs = require("express-ws");
+import websocketStream = require("websocket-stream");
 const { app } = expressWs(express());
 
 const port = process.env.PORT || 8080;
@@ -13,11 +14,9 @@ const port = process.env.PORT || 8080;
 app.use(express.json({ limit: "300kb" }));
 
 // Docker API setup
-// windows: { host: "https://localhost", port: 2375 }
-// linux: { socketPath: "/var/run/docker.sock" }
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 
-// write and pack file into tar for docker API engine
+// write and pack script+dockerfile into tar for docker API engine
 function buildPack(language: string, script: string) {
 	switch (language) {
 		case "python":
@@ -32,64 +31,92 @@ function buildPack(language: string, script: string) {
 	}
 }
 
-app.get("/", (req, res) => {
-	res.status(200).send("listening!");
+// route handles POST new script, creates container
+app.post("/create", async (req, res) => {
+	console.log("begin " + req.body.language);
+	try {
+		// get user info
+		const user = req.body.user;
+		const imageName = user + "-image";
+		const containerName = user + "-container";
+
+		// pack for docker API build call
+		const pack = buildPack(req.body.language, req.body.script);
+
+		// promise stream while docker builds image
+		const stream = await docker.buildImage(pack, {
+			t: imageName,
+		});
+
+		// resolve promise stream
+		await new Promise((resolve, reject) => {
+			docker.modem.followProgress(stream, (err: unknown, res: unknown) =>
+				err ? reject(err) : resolve(res)
+			);
+		});
+
+		docker.createContainer(
+			{
+				Image: imageName,
+				name: containerName,
+				AttachStdin: true,
+				AttachStdout: true,
+				AttachStderr: true,
+				Tty: false,
+				OpenStdin: true,
+				StdinOnce: false,
+				HostConfig: { AutoRemove: true },
+			},
+			function createCB(err, container) {
+				res.status(200).send(container.id);
+			}
+		);
+	} catch (err) {
+		console.log(err);
+		res.status(500).send(err);
+	}
 });
 
-app.ws("/socket/", function socket(ws, req) {
-	// initialize container
-	ws.on("open", function open() {
-		ws.send("open");
-	});
+// handle container start and websocket connection for container stdin, stdout, stderr
+app.ws("/run/:containerId", function socket(ws, req) {
+	try {
+		const wsStream = websocketStream(ws);
 
-	ws.on("message", async function incoming(msgRaw: string) {
-		const msg = JSON.parse(msgRaw.toString());
+		// on open attach to, and start container
+		const container = docker.getContainer(req.params.containerId);
+		let stdin: NodeJS.ReadWriteStream;
+		ws.send("open " + container.id);
 
-		// container start
-		if (msg.run === true) {
-			console.log("begin " + msg.language);
-			try {
-				// get user info
-				const user = msg.user;
-				const imageName = user + "-image";
-				const containerName = user + "-container";
+		container.attach(
+			{
+				stream: true,
+				stdin: true,
+				stdout: true,
+				stderr: true,
+			},
+			function attachCB(err, stream) {
+				// save stdin stream
+				stdin = stream;
 
-				// pack for docker API build call
-				const pack = buildPack(msg.language, msg.script);
+				// connect container stdout stderr to client
+				stream.pipe(wsStream);
 
-				// promise stream while docker builds image
-				const stream = await docker.buildImage(pack, {
-					t: imageName,
-				});
-
-				// promise stream resolve
-				await new Promise((resolve, reject) => {
-					docker.modem.followProgress(
-						stream,
-						(err: unknown, res: unknown) =>
-							err ? reject(err) : resolve(res)
-					);
-				});
-
-				// run container
-				await docker.run(imageName, [], process.stdout, {
-					name: containerName,
-					AttachStdin: true,
-					AttachStdout: true,
-					AttachStderr: true,
-					Tty: true,
-					OpenStdin: true,
-					StdinOnce: false,
-					HostConfig: { AutoRemove: true },
-				});
-
-				ws.send("container finished");
-			} catch (err) {
-				console.log(err);
-				ws.send(err);
+				container.start();
 			}
-		}
-	});
+		);
+
+		// on message publish to container stdin
+		ws.on("message", function messageCB(msg) {
+			stdin.write(msg.toString());
+		});
+	} catch (err) {
+		console.log(err);
+		ws.send(err);
+	}
+});
+
+app.get("/", (req, res) => {
+	res.status(200).send("listening!");
 });
 
 app.listen(port, () => console.log(`Running on port ${port}`));

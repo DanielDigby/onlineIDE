@@ -4,7 +4,8 @@
 		"dockerode": "^3.3.0",
 		"express": "^4.17.1",
 		"express-ws": "^5.0.2",
-		"tar-fs": "^2.1.1"
+		"tar-fs": "^2.1.1",
+		"websocket-stream": "https://github.com/DanielDigby/websocket-stream/tarball/refs/heads/master"
 	},
 	"main": "dist/index.js",
 	"scripts": {
