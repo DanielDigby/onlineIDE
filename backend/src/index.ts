@@ -17,11 +17,14 @@ app.use(express.json({ limit: "300kb" }));
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 
 // write and pack script+dockerfile into tar for docker API engine
-function buildPack(language: string, script: string) {
+function buildPack(language: string, script: string): tar.Pack {
+	if (script.length === 0) {
+		throw new Error("No script provided");
+	}
 	switch (language) {
 		case "python":
 			fs.writeFile("./langs/python/app.py", script, function (err) {
-				if (err) throw err;
+				if (err) throw new Error("Unable to write file");
 			});
 
 			return tar.pack(path.join(__dirname, "../langs/python"));
@@ -120,3 +123,7 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => console.log(`Running on port ${port}`));
+
+export const testExport = {
+	buildPack: buildPack,
+};
