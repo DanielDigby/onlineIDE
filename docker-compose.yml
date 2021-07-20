@@ -2,7 +2,7 @@ services:
     backend:
         build:
             context: ./backend
-            dockerfile: Dockerfile.backend
+            dockerfile: Dockerfile
         ports:
             - "8080:8080"
         volumes:
@@ -10,6 +10,6 @@ services:
     frontend:
         build:
             context: ./frontend
-            dockerfile: Dockerfile.frontend
+            dockerfile: Dockerfile
         ports:
             - "3000:3000"
