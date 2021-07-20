@@ -57,7 +57,7 @@ app.post("/create", async (req, res) => {
 				err ? reject(err) : resolve(res)
 			);
 		});
-
+		console.log("built image");
 		docker.createContainer(
 			{
 				Image: imageName,
