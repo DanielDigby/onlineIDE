@@ -1,0 +1,115 @@
+{
+	"info": {
+		"_postman_id": "60d5f8f6-4a12-4976-bde5-f920f02c7458",
+		"name": "onlineIDE",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "run - python",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n   \"user\": \"daniel\",\r\n   \"language\": \"python\",\r\n   \"script\": \"import random\\na=['computer','program','random', 'hello', 'decrypt', 'encrypt', 'string', 'loop', 'programming', 'digimaker']\\nword=random.choice(a)\\nguesses = ''\\nturns = 10\\nfailed = 0\\nwhile turns > 0: \\n  for char in word:\\n    if char in guesses:               \\n      print (char,end=' ')        \\n    else:           \\n      print ('_', end=' ')                \\n      failed = 1    \\n  print(' ')\\n  if failed == 0:        \\n    print ('You won!')\\n    break\\n  \\n  guess = input('guess a character:') \\n  guesses += guess\\n  if guess not in word:  \\n    turns -= 1\\n    \\nif failed == 1:\\n  print(word)\\nelse:\\n  print(10-turns)\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/create/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"create",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "run - c",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n   \"user\": \"daniel\",\r\n   \"language\": \"c\",\r\n   \"script\": \"#include <stdio.h>\\nint main() {\\nprintf('\\nHello, World!\\n');\\nreturn 0;\\n}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/run/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"run",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "run - java",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n   \"user\": \"daniel\",\r\n   \"language\": \"java\",\r\n   \"script\": \"public class App {\\n// Your program begins with a call to main().\\n// Prints 'Hello, World' to the terminal window.\\npublic static void main(String args[]) {\\nSystem.out.print('Hello, World');\\n}\\n}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/run/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"run",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
