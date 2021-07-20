@@ -5,6 +5,7 @@
 	],
 	"dependencies": {
 		"dockerode": "^3.3.0",
+		"ws@^5.2.3": "5.2.3",
 		"express": "^4.17.1",
 		"express-ws": "^5.0.2",
 		"tar-fs": "^2.1.1",
