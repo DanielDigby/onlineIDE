@@ -1,8 +1,9 @@
 FROM node:alpine
-WORKDIR /app
+WORKDIR /usr/src/app
 COPY package.json ./
 COPY yarn.lock ./
 RUN yarn install
-COPY . ./
+COPY . .
 EXPOSE 3000
-CMD ["yarn", "start"]
+RUN yarn run build
+CMD [ "yarn", "start" ]
